@@ -53,7 +53,12 @@ is not silently lost.
 
 - **Leads depend on the tower being up.** n8n runs in Docker on JARVIS; the
   public path is `tailscale funnel --bg --set-path /webhook/ http://127.0.0.1:5678/webhook/`.
-  The n8n editor itself is not exposed.
+  The n8n editor itself is not exposed. Run it from PowerShell, or from Git Bash with
+  `MSYS_NO_PATHCONV=1` set; otherwise Git Bash rewrites `/webhook/` to
+  `C:/Program Files/Git/webhook/` and the route silently points nowhere.
+- **If the n8n editor won't load but the container is "Up":** Docker's port
+  forward went stale (empty reply on :5678 while `docker exec n8n wget -qO- http://127.0.0.1:5678/healthz`
+  says ok). `docker restart n8n` restores it.
 - **Re-importing the workflow:** `docker cp n8n/home-valuation-lead.json n8n:/tmp/hv.json`
   then `docker exec n8n n8n import:workflow --input=/tmp/hv.json` (from Git Bash,
   set `MSYS_NO_PATHCONV=1` first). Re-attach the Gmail credential afterwards.
