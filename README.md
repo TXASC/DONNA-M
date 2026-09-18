@@ -9,10 +9,11 @@ https://txasc.github.io/DONNA-M/home-valuation/
 
 | Path | What it is |
 |------|------------|
-| `home-valuation/index.html` | The landing page. Self-contained; the footer graphic is embedded inline. |
+| `home-valuation/index.html` | The landing page: headline, form, KW logo + headshot band, KW-red page border. Mobile-first. |
 | `home-valuation/qr.html` | Browser QR generator, pre-filled with the live URL. |
 | `home-valuation/assets/home-valuation-qr.png` / `.svg` | Print-ready QR code (PNG 1320px; SVG for large-format signs). |
-| `home-valuation/assets/mallory-footer.jpg` | Source copy of the footer graphic. |
+| `home-valuation/assets/kw-logo-white.png` | White KW Dallas Preston Road logo (needs a dark background). |
+| `home-valuation/assets/mallory-headshot.webp` | Transparent headshot, resized to 640px (62 KB) from the 1.7 MB original. |
 | `n8n/home-valuation-lead.json` | Export of the n8n workflow that emails Mallory. |
 | `index.html` | Redirects the site root to the landing page. |
 
@@ -40,7 +41,7 @@ is not silently lost.
   "email": "jane@email.com",
   "address": "123 Main St, Prosper, TX 75078",
   "timeframe": "1-3 months",
-  "notes": "Recent renovations, ideal timeline, etc.",
+  "notes": "",
   "website": "",
   "source": "home-valuation-landing-page",
   "submitted_at": "2026-09-17T21:00:00.000Z"
