@@ -25,7 +25,8 @@ Client scans QR -> landing page (GitHub Pages)
    -> n8n on the JARVIS tower: "DONNA-M — Home Valuation Lead -> Email Mallory"
         1. Webhook (CORS locked to https://txasc.github.io)
         2. Validate + Format Lead: drops honeypot/bot and incomplete submissions, HTML-escapes input
-        3. Gmail -> mallorya@kw.com, Reply-To set to the lead's email
+        3. Send Email (SMTP) -> mallorya@kw.com, from mallorya407@gmail.com,
+           Reply-To set to the lead's email
 ```
 
 If the webhook can't be reached (tower off, n8n down), the page opens a
@@ -63,5 +64,11 @@ is not silently lost.
 - **Re-importing the workflow:** `docker cp n8n/home-valuation-lead.json n8n:/tmp/hv.json`
   then `docker exec n8n n8n import:workflow --input=/tmp/hv.json` (from Git Bash,
   set `MSYS_NO_PATHCONV=1` first). Re-attach the Gmail credential afterwards.
+- **Email transport:** SMTP (smtp.gmail.com:465, credential "Mallory Gmail SMTP",
+  Gmail App Password for mallorya407@gmail.com). Gmail OAuth2 was abandoned on
+  purpose: the OAuth app is unverified, so Testing mode expires refresh tokens
+  after 7 days and Published mode shows an "unverified app" warning. If alerts
+  ever stop, check whether the App Password was revoked at
+  myaccount.google.com/apppasswords.
 - **Not yet wired:** logging the lead into the DONNA-M CRM (cloud Supabase,
   schema `mallory`). Add a node after "Validate + Format Lead" when wanted.
