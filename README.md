@@ -72,3 +72,22 @@ is not silently lost.
   myaccount.google.com/apppasswords.
 - **Not yet wired:** logging the lead into the DONNA-M CRM (cloud Supabase,
   schema `mallory`). Add a node after "Validate + Format Lead" when wanted.
+
+## HNA 2027 membership page (`/hna/`)
+
+Same pattern as the home valuation page, for The Highlands Neighborhood Association.
+
+```
+Neighbor scans QR (hna/assets/hna-qr.png) -> https://txasc.github.io/DONNA-M/hna/
+   -> POST https://jarvis.tailb14d90.ts.net/webhook/hna-membership   (same Tailscale Funnel /webhook/ path)
+   -> n8n: "HNA — 2027 Membership Signup -> Email President" (n8n/hna-membership.json, id donnaHnaMember1)
+        1. Webhook (CORS locked to https://txasc.github.io)
+        2. Validate + Format Member: drops honeypot/bot and incomplete submissions, HTML-escapes input
+        3. Send Email (SMTP, credential "Mallory Gmail SMTP") -> president@highlandshna.com,
+           from mallorya407@gmail.com, Reply-To set to the member's email
+```
+
+Payload: `name, phone, email, address, name2, phone2, email2, kids, website (honeypot), source, submitted_at`.
+If the webhook can't be reached, the page opens a pre-filled email to president@highlandshna.com instead.
+Import: `docker cp n8n/hna-membership.json n8n:/tmp/hna.json && docker exec n8n n8n import:workflow --input=/tmp/hna.json`
+(Git Bash: set `MSYS_NO_PATHCONV=1`), then attach the "Mallory Gmail SMTP" credential and activate.

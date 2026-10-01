@@ -52,6 +52,8 @@ input:focus{outline:none;border-bottom-color:var(--navy)}
 input.err{border-bottom-color:var(--red)} input.err::placeholder{color:var(--red)}
 #adult2{display:grid;gap:inherit}
 #adult2[hidden]{display:none}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.go:disabled{opacity:.7;cursor:wait}
 
 .extras{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;flex-wrap:nowrap}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:#fff;color:var(--navy);
@@ -96,6 +98,7 @@ input.err{border-bottom-color:var(--red)} input.err::placeholder{color:var(--red
   </header>
 
   <form id="f" novalidate>
+    <input type="text" id="website" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
     <input type="text" id="n1" placeholder="Your name *" autocomplete="name">
     <div class="two">
       <input type="tel" id="p1" placeholder="Phone *" autocomplete="tel" inputmode="tel">
@@ -118,14 +121,17 @@ input.err{border-bottom-color:var(--red)} input.err::placeholder{color:var(--red
       </div>
     </div>
 
-    <button class="go" type="submit">Join the HNA</button>
+    <button class="go" type="submit" id="go">Join the HNA</button>
   </form>
 
   <section id="done" hidden>
     <h2>Welcome, neighbor!</h2>
-    <p>Your email app should open with everything filled in — just hit send. If it didn't, copy this and email it to <strong>president@highlandshna.com</strong>.</p>
-    <pre id="sum"></pre>
-    <div class="row"><button class="solid" id="cp">Copy</button><button class="ghost" id="bk">Edit</button></div>
+    <div id="ok"><p>Your 2027 membership was sent to the HNA board. We'll be in touch soon. Thank you for supporting The Highlands!</p></div>
+    <div id="fb" hidden>
+      <p>We couldn't send it automatically, so your email app should open with everything filled in. Just hit send. If it didn't open, copy this and email it to <strong>president@highlandshna.com</strong>.</p>
+      <pre id="sum"></pre>
+      <div class="row"><button class="solid" id="cp">Copy</button><button class="ghost" id="bk">Edit</button></div>
+    </div>
   </section>
 </main>
 
@@ -144,20 +150,34 @@ input.err{border-bottom-color:var(--red)} input.err::placeholder{color:var(--red
   $('kp').onclick=()=>{kids=Math.min(12,kids+1);$('kn').textContent=kids};
   ['n1','p1','e1','addr'].forEach(id=>$(id).addEventListener('input',e=>e.target.classList.remove('err')));
 
+  // Same flow as the home valuation page: POST to n8n on the JARVIS tower
+  // (via Tailscale Funnel), which emails the HNA president from Mallory's Gmail.
+  // If the webhook can't be reached, fall back to a pre-filled email so the signup isn't lost.
+  const N8N_WEBHOOK_URL='https://jarvis.tailb14d90.ts.net/webhook/hna-membership';
   $('f').onsubmit=e=>{
     e.preventDefault();
     const v=id=>$(id).value.trim();let bad=null;
     ['n1','p1','e1','addr'].forEach(id=>{const ok=id==='e1'?/^\S+@\S+\.\S+$/.test(v(id)):!!v(id);
       if(!ok){$(id).classList.add('err');bad=bad||$(id);}});
     if(bad){bad.focus();return;}
-    const L='-'.repeat(34);
-    let t=`HNA 2027 MEMBERSHIP\n${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}\n${L}\nName:    ${v('n1')}\nPhone:   ${v('p1')}\nEmail:   ${v('e1')}\nAddress: ${v('addr')}\n`;
-    if($('add').getAttribute('aria-pressed')==='true'&&(v('n2')||v('p2')||v('e2')))
-      t+=`${L}\nSECOND ADULT\nName:    ${v('n2')}\nPhone:   ${v('p2')}\nEmail:   ${v('e2')}\n`;
-    t+=`${L}\nChildren under 18: ${kids}`;
-    $('sum').textContent=t;
-    location.href=`mailto:${TO}?subject=${encodeURIComponent('HNA 2027 Membership — '+v('n1'))}&body=${encodeURIComponent(t)}`;
-    $('f').hidden=true;$('done').hidden=false;
+    const adult2=$('add').getAttribute('aria-pressed')==='true';
+    const data={name:v('n1'),phone:v('p1'),email:v('e1'),address:v('addr'),
+      name2:adult2?v('n2'):'',phone2:adult2?v('p2'):'',email2:adult2?v('e2'):'',
+      kids:String(kids),website:v('website'),source:'hna-2027-membership-page',submitted_at:new Date().toISOString()};
+    const done=sent=>{$('ok').hidden=!sent;$('fb').hidden=sent;$('f').hidden=true;$('done').hidden=false;
+      $('go').disabled=false;$('go').textContent='Join the HNA';fit();scrollTo({top:0,behavior:'smooth'});};
+    $('go').disabled=true;$('go').textContent='Sending…';
+    const ctl=new AbortController();const timer=setTimeout(()=>ctl.abort(),15000);
+    fetch(N8N_WEBHOOK_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:ctl.signal})
+      .then(r=>{clearTimeout(timer);if(!r.ok)throw new Error('Webhook '+r.status);done(true);})
+      .catch(()=>{clearTimeout(timer);
+        const L='-'.repeat(34);
+        let t=`HNA 2027 MEMBERSHIP\n${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}\n${L}\nName:    ${data.name}\nPhone:   ${data.phone}\nEmail:   ${data.email}\nAddress: ${data.address}\n`;
+        if(data.name2||data.phone2||data.email2)t+=`${L}\nSECOND ADULT\nName:    ${data.name2}\nPhone:   ${data.phone2}\nEmail:   ${data.email2}\n`;
+        t+=`${L}\nChildren under 18: ${data.kids}`;
+        $('sum').textContent=t;done(false);
+        location.href=`mailto:${TO}?subject=${encodeURIComponent('HNA 2027 Membership — '+data.name)}&body=${encodeURIComponent(t)}`;
+      });
   };
   $('cp').onclick=()=>{navigator.clipboard.writeText($('sum').textContent).then(()=>{$('cp').textContent='Copied!';$('cp').classList.add('ok');
     setTimeout(()=>{$('cp').textContent='Copy';$('cp').classList.remove('ok')},2200)}).catch(()=>{})};
