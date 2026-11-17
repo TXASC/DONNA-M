@@ -14,80 +14,16 @@ https://txasc.github.io/DONNA-M/home-valuation/
 | `home-valuation/assets/home-valuation-qr.png` / `.svg` | Print-ready QR code (PNG 1320px; SVG for large-format signs). |
 | `home-valuation/assets/kw-logo-white.png` | White KW Dallas Preston Road logo (needs a dark background). |
 | `home-valuation/assets/mallory-headshot.webp` | Transparent headshot, resized to 640px (62 KB) from the 1.7 MB original. |
-| `n8n/home-valuation-lead.json` | Export of the n8n workflow that emails Mallory. |
 | `index.html` | Redirects the site root to the landing page. |
-
-### How a lead flows
-
-```
-Client scans QR -> landing page (GitHub Pages)
-   -> POST https://jarvis.tailb14d90.ts.net/webhook/home-valuation   (Tailscale Funnel, /webhook/ path only)
-   -> n8n on the JARVIS tower: "DONNA-M — Home Valuation Lead -> Email Mallory"
-        1. Webhook (CORS locked to https://txasc.github.io)
-        2. Validate + Format Lead: drops honeypot/bot and incomplete submissions, HTML-escapes input
-        3. Send Email (SMTP) -> mallorya@kw.com, from mallorya407@gmail.com,
-           Reply-To set to the lead's email
-```
-
-If the webhook can't be reached (tower off, n8n down), the page opens a
-pre-filled email to mallorya@kw.com in the visitor's own mail app, so the lead
-is not silently lost.
-
-### Payload the page sends
-
-```json
-{
-  "fullName": "Jane Smith",
-  "phone": "(214) 555-0100",
-  "email": "jane@email.com",
-  "address": "123 Main St, Prosper, TX 75078",
-  "timeframe": "1-3 months",
-  "notes": "",
-  "website": "",
-  "source": "home-valuation-landing-page",
-  "submitted_at": "2026-09-17T21:00:00.000Z"
-}
-```
-
-`website` is a hidden honeypot field; real visitors never fill it.
-
-### Operating notes
-
-- **Leads depend on the tower being up.** n8n runs in Docker on JARVIS; the
-  public path is `tailscale funnel --bg --set-path /webhook/ http://127.0.0.1:5678/webhook/`.
-  The n8n editor itself is not exposed. Run it from PowerShell, or from Git Bash with
-  `MSYS_NO_PATHCONV=1` set; otherwise Git Bash rewrites `/webhook/` to
-  `C:/Program Files/Git/webhook/` and the route silently points nowhere.
-- **If the n8n editor won't load but the container is "Up":** Docker's port
-  forward went stale (empty reply on :5678 while `docker exec n8n wget -qO- http://127.0.0.1:5678/healthz`
-  says ok). `docker restart n8n` restores it.
-- **Re-importing the workflow:** `docker cp n8n/home-valuation-lead.json n8n:/tmp/hv.json`
-  then `docker exec n8n n8n import:workflow --input=/tmp/hv.json` (from Git Bash,
-  set `MSYS_NO_PATHCONV=1` first). Re-attach the Gmail credential afterwards.
-- **Email transport:** SMTP (smtp.gmail.com:465, credential "Mallory Gmail SMTP",
-  Gmail App Password for mallorya407@gmail.com). Gmail OAuth2 was abandoned on
-  purpose: the OAuth app is unverified, so Testing mode expires refresh tokens
-  after 7 days and Published mode shows an "unverified app" warning. If alerts
-  ever stop, check whether the App Password was revoked at
-  myaccount.google.com/apppasswords.
-- **Not yet wired:** logging the lead into the DONNA-M CRM (cloud Supabase,
-  schema `mallory`). Add a node after "Validate + Format Lead" when wanted.
 
 ## HNA 2027 membership page (`/hna/`)
 
 Same pattern as the home valuation page, for The Highlands Neighborhood Association.
+Print-ready QR: `hna/assets/hna-qr.png` / `.svg`.
 
-```
-Neighbor scans QR (hna/assets/hna-qr.png) -> https://txasc.github.io/DONNA-M/hna/
-   -> POST https://jarvis.tailb14d90.ts.net/webhook/hna-membership   (same Tailscale Funnel /webhook/ path)
-   -> n8n: "HNA — 2027 Membership Signup -> Email President" (n8n/hna-membership.json, id donnaHnaMember1)
-        1. Webhook (CORS locked to https://txasc.github.io)
-        2. Validate + Format Member: drops honeypot/bot and incomplete submissions, HTML-escapes input
-        3. Send Email (SMTP, credential "Mallory Gmail SMTP") -> president@highlandshna.com,
-           from mallorya407@gmail.com, Reply-To set to the member's email
-```
+## Where the form goes
 
-Payload: `name, phone, email, address, name2, phone2, email2, kids, website (honeypot), source, submitted_at`.
-If the webhook can't be reached, the page opens a pre-filled email to president@highlandshna.com instead.
-Import: `docker cp n8n/hna-membership.json n8n:/tmp/hna.json && docker exec n8n n8n import:workflow --input=/tmp/hna.json`
-(Git Bash: set `MSYS_NO_PATHCONV=1`), then attach the "Mallory Gmail SMTP" credential and activate.
+Both forms post to a private automation that emails the right person. If it
+can't be reached, the page opens a pre-filled email in the visitor's own mail
+app, so nothing is lost. Setup and operating notes are kept outside this
+public repo.
